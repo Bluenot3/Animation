@@ -1,19 +1,20 @@
-<html><head><base href="2∞&beyond"><title>2∞&beyond</title><style>
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>2 Infinity &amp; Beyond</title><style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 body, html {
-    margin: 0;
-    padding: 0;
     width: 100%;
     height: 100%;
     overflow: hidden;
+    background: #000;
 }
 canvas {
     width: 100%;
     height: 100%;
     display: block;
+    image-rendering: auto;
 }
 </style></head><body>
 <canvas id="glCanvas"></canvas>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.8.1/gl-matrix-min.js"></script>
 <script>
 const canvas = document.getElementById('glCanvas');
 const gl = canvas.getContext('webgl2');
@@ -55,8 +56,8 @@ out vec4 fragColor;
 // 
 
 //#define HIGH_QUALITY
-#define MED_QUALITY
-//#define LOW_QUALITY
+//#define MED_QUALITY
+#define LOW_QUALITY
 //#define VERY_LOW_QUALITY
 
 const float PI = 3.14159265359;
@@ -1547,24 +1548,41 @@ gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
 let mouseX = 0, mouseY = 0;
 canvas.addEventListener('mousemove', (e) => {
     mouseX = e.clientX;
-    mouseY = canvas.height - e.clientY;  // Flip Y coordinate
+    mouseY = canvas.height - e.clientY;
 });
 
+// Render at a fraction of native resolution for performance
+const PIXEL_RATIO = 0.5;
+let resizeTimeout;
+
 function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    gl.viewport(0, 0, canvas.width, canvas.height);
+    const w = Math.floor(window.innerWidth * PIXEL_RATIO);
+    const h = Math.floor(window.innerHeight * PIXEL_RATIO);
+    if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+        gl.viewport(0, 0, w, h);
+    }
 }
 
-window.addEventListener('resize', resizeCanvas);
-resizeCanvas();  // Call once to set initial size
+window.addEventListener('resize', () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(resizeCanvas, 100);
+});
+resizeCanvas();
+
+let lastTime = 0;
+const MIN_FRAME_MS = 1000 / 60; // cap at 60 fps
 
 function render(time) {
-    gl.uniform3f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height, 1.0);
-    gl.uniform1f(timeUniformLocation, time * 0.001);
-    gl.uniform4f(mouseUniformLocation, mouseX, mouseY, 0.0, 0.0);
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     requestAnimationFrame(render);
+    if (time - lastTime < MIN_FRAME_MS) return;
+    lastTime = time;
+
+    gl.uniform3f(resolutionUniformLocation, canvas.width, canvas.height, 1.0);
+    gl.uniform1f(timeUniformLocation, time * 0.001);
+    gl.uniform4f(mouseUniformLocation, mouseX * PIXEL_RATIO, mouseY * PIXEL_RATIO, 0.0, 0.0);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 }
 
 requestAnimationFrame(render);
